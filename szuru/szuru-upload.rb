@@ -40,7 +40,7 @@ metadata = StringIO.new(JSON.generate(json))
 # build & make POST request
 uri = URI("http://localhost:4863/api/posts/")
 request = Net::HTTP::Post.new(uri)
-request["Authorization"] = "Token #{ENV["SZURU_TOKEN"]}" 
+request["Authorization"] = ENV["SZURU_TOKEN"]
 request["Accept"] = "application/json"
 form_data = [
     ["metadata", metadata],
