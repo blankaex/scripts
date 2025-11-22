@@ -8,6 +8,9 @@ require 'ostruct'
 require 'stringio'
 require 'uri'
 
+# print help message
+abort("Usage: szuru-upload -t [TAG1] -t [TAG2] ... -s [SAFETY] -r [SOURCE] [FILE/URL]") if ARGV[0].strip == "-h"
+
 # set default tags & safety
 options = OpenStruct.new
 options.tags = []
@@ -43,8 +46,12 @@ request.set_form(form_data, "multipart/form-data")
 response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: false) do |http|
     http.request(request)
 end
-tags = JSON.parse(response.body)[0]["tags"].keys
-tags.delete_if {|tag| tag.include? "rating:"}
+if JSON.parse(response.body)[0] 
+  tags = JSON.parse(response.body)[0]["tags"].keys
+  tags.delete_if {|tag| tag.include? "rating:"}
+else
+  tags = []
+end
 
 # attempt to create missing tags
 uri = URI("http://192.168.1.4:2150/api/tags")
