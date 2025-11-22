@@ -36,6 +36,7 @@ request.set_form(form_data, "multipart/form-data")
 response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: false) do |http|
     http.request(request)
 end
+abort("Detected 0 tags for #{ARGV[0]}") if !JSON.parse(response.body)[0]
 tags = JSON.parse(response.body)[0]["tags"].keys
 tags.delete_if {|tag| tag.include? "rating:"}
 
