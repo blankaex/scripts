@@ -2,6 +2,7 @@
 
 require 'json'
 require 'net/http'
+require 'open-uri'
 require 'optparse'
 require 'ostruct'
 require 'stringio'
@@ -14,41 +15,81 @@ options.safety = "safe"
 
 # read custom tags & safety
 OptionParser.new do |opts|
-    opts.on("-t=s", Array) do |t|
+    opts.on("-t=t", Array) do |t|
         options.tags += t
     end
 
     opts.on("-s=s") do |s|
         options.safety = s
     end
-end.parse!
 
-# restore default tag if necessary
-options.tags = ["tagme"] if options.tags.empty?
+    opts.on("-r=r") do |r|
+        options.source = r
+    end
+end.parse!
 
 # get file path
 abort("No file specified") if !ARGV[0]
-options.filepath = `realpath \"#{ARGV[0]}\"`.strip
+file = URI.open(ARGV[0])
+
+# send to be tagged
+uri = URI("http://192.168.1.4:2153/evaluate")
+request = Net::HTTP::Post.new(uri)
+form_data = [
+    ["file", file],
+    ["format", "json"]
+]
+request.set_form(form_data, "multipart/form-data")
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: false) do |http|
+    http.request(request)
+end
+tags = JSON.parse(response.body)[0]["tags"].keys
+tags.delete_if {|tag| tag.include? "rating:"}
+
+# attempt to create missing tags
+uri = URI("http://192.168.1.4:2150/api/tags")
+headers = { 
+  "Authorization": ENV["SZURU_TOKEN"],
+  "Accept": "application/json",
+  "Content-Type": "application/json"
+}
+for tag in tags
+  body = {
+    names: tag,
+    category: "Autotag"
+  }
+  response = Net::HTTP.post(uri, body.to_json, headers)
+end
 
 # build json request data
 json = {
-    "tags": options.tags,
-    "safety": options.safety
+    "tags": options.tags + tags,
+    "safety": options.safety,
+    "source": options.source
 }
 metadata = StringIO.new(JSON.generate(json))
 
 # build & make POST request
-uri = URI("http://localhost:4863/api/posts/")
+uri = URI("http://192.168.1.4:2150/api/posts/")
 request = Net::HTTP::Post.new(uri)
 request["Authorization"] = ENV["SZURU_TOKEN"]
 request["Accept"] = "application/json"
+file.rewind
 form_data = [
     ["metadata", metadata],
-    ["content", File.open(options.filepath)]
+    ["content", file]
 ]
 request.set_form(form_data, "multipart/form-data")
 response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: false) do |http|
     http.request(request)
 end
 
-puts "Posted #{ARGV[0]}"
+# handle response
+output = JSON.parse(response.body)
+if response.code.to_i == 400
+  abort "#{output["name"]}: #{output["description"]}"
+elsif response.code.to_i == 200
+  puts "Posted #{ARGV[0]} to post number #{output["id"]}"
+else
+  abort response.body
+end
