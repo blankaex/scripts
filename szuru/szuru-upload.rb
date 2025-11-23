@@ -9,7 +9,7 @@ require 'stringio'
 require 'uri'
 
 # print help message
-abort("Usage: szuru-upload -t [TAG1] -t [TAG2] ... -s [SAFETY] -r [SOURCE] [FILE/URL]") if ARGV[0].strip == "-h"
+abort("Usage: szuru-upload -t [TAG1] -t [TAG2] ... -s [SAFETY] -r [SOURCE] [FILE/URL]") if !ARGV[0] or ARGV[0].strip == "-h"
 
 # set default tags & safety
 options = OpenStruct.new
