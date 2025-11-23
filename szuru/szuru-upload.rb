@@ -96,7 +96,7 @@ output = JSON.parse(response.body)
 if response.code.to_i == 400
   abort "#{output["name"]}: #{output["description"]}"
 elsif response.code.to_i == 200
-  puts "Posted #{ARGV[0]} to post number #{output["id"]}"
+  puts "Posted #{ARGV[0]} to https://szurubooru.blankaex.reisen/post/#{output["id"]}"
 else
   abort response.body
 end
